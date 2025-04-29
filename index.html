@@ -1,13 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>webpage</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f5f7fa;
+      padding: 40px 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 40px;
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 25px;
+      list-style: none;
+    }
+
+    .project-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      transition: all 0.3s ease;
+      position: relative;
+      height: 100px;
+    }
+
+    .project-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .project-card a {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-decoration: none;
+      color: #2c3e50;
+      height: 100%;
+      padding: 25px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .project-title {
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .project-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #3498db, #2c3e50);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 0;
+    }
+
+    .project-card:hover::before {
+      opacity: 0.9;
+    }
+
+    .project-card:hover a {
+      color: white;
+    }
+
+    .project-card:hover .project-icon {
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .project-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <ul>
-    <li><a href="./rotating_hexagon_ball_sim.html">旋转六边形小球模拟</a></li>
-  </ul>
+  <div class="container">
+    <h1>我的项目集</h1>
+    <ul class="project-grid">
+      <li class="project-card">
+        <a href="./rotating_hexagon_ball_sim.html">
+          <div class="project-title">旋转六边形小球模拟</div>
+        </a>
+      </li>
+
+    </ul>
+  </div>
 </body>
+
 </html>
