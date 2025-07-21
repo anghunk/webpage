@@ -2,6 +2,8 @@
 
 预览一些简单的网页效果。
 
+https://webpage.zishu.me/
+
 ```js
 /**
                _                            
@@ -12,3 +14,6 @@
                     |_|          |___/      
 */
 ```
+
+- [旋转六边形小球模拟](https://webpage.zishu.me/rotating_hexagon_ball_sim.html)
+- [极客资源搜索工具](https://webpage.zishu.me/pansearch.html)

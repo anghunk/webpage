@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>NetworkDrive Hunter - 网盘资源搜索引擎</title>
+	<style>
+		:root {
+			--primary-color: #00c7c7;
+			--bg-color: #0d1117;
+			--card-bg: #161b22;
+			--text-color: #e6edf3;
+			--secondary-text: #8b949e;
+			--border-color: #30363d;
+			--hover-color: #0f5959;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			font-family: 'Consolas', 'Monaco', 'JetBrains Mono', monospace;
+		}
+
+		body {
+			background-color: var(--bg-color);
+			color: var(--text-color);
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+		}
+
+		header {
+			padding: 1.5rem;
+			text-align: center;
+			border-bottom: 1px solid var(--border-color);
+		}
+
+		h1 {
+			font-size: 2.5rem;
+			margin-bottom: 0.5rem;
+			background: linear-gradient(90deg, var(--primary-color), #00e6e6);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+		}
+
+		.subtitle {
+			color: var(--secondary-text);
+			font-size: 1rem;
+		}
+
+		.container {
+			width: 90%;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 2rem 0;
+			flex: 1;
+		}
+
+		.search-box {
+			display: flex;
+			margin-bottom: 2rem;
+			position: relative;
+		}
+
+		.search-input {
+			flex: 1;
+			padding: 1rem 1.5rem;
+			border: 1px solid var(--border-color);
+			border-radius: 5px 0 0 5px;
+			background-color: var(--card-bg);
+			color: var(--text-color);
+			font-size: 1rem;
+			outline: none;
+			transition: all 0.3s;
+		}
+
+		.search-input:focus {
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 2px rgba(0, 199, 199, 0.2);
+		}
+
+		.search-btn {
+			background-color: var(--primary-color);
+			color: #000;
+			border: none;
+			padding: 0 1.5rem;
+			font-weight: bold;
+			border-radius: 0 5px 5px 0;
+			cursor: pointer;
+			transition: all 0.3s;
+		}
+
+		.search-btn:hover {
+			background-color: var(--hover-color);
+			color: var(--text-color);
+		}
+
+		.advanced-toggle {
+			color: var(--primary-color);
+			background: none;
+			border: none;
+			margin-top: 10px;
+			cursor: pointer;
+			font-size: 0.9rem;
+			display: flex;
+			align-items: center;
+		}
+
+		.advanced-toggle:hover {
+			text-decoration: underline;
+		}
+
+		.advanced-options {
+			display: none;
+			background-color: var(--card-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 5px;
+			padding: 1rem;
+			margin-bottom: 1.5rem;
+		}
+
+		.option-group {
+			margin-bottom: 1rem;
+		}
+
+		.option-group label {
+			display: block;
+			margin-bottom: 0.5rem;
+			color: var(--secondary-text);
+		}
+
+		.option-group select,
+		.option-group input {
+			width: 100%;
+			padding: 0.5rem;
+			background-color: var(--bg-color);
+			border: 1px solid var(--border-color);
+			border-radius: 4px;
+			color: var(--text-color);
+		}
+
+		.checkbox-group {
+			margin-top: 0.5rem;
+		}
+
+		.checkbox-group input {
+			margin-right: 0.5rem;
+			width: auto;
+		}
+
+		.result-stats {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 1rem;
+			color: var(--secondary-text);
+			font-size: 0.9rem;
+		}
+
+		.loading {
+			display: none;
+			text-align: center;
+			margin: 2rem 0;
+		}
+
+		.spinner {
+			border: 4px solid rgba(0, 0, 0, 0.1);
+			border-left-color: var(--primary-color);
+			border-radius: 50%;
+			width: 30px;
+			height: 30px;
+			animation: spin 1s linear infinite;
+			margin: 0 auto 1rem;
+		}
+
+		@keyframes spin {
+			to {
+				transform: rotate(360deg);
+			}
+		}
+
+		.results-container {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 1.5rem;
+		}
+
+		.result-tabs {
+			display: flex;
+			flex-wrap: wrap;
+			margin-bottom: 1rem;
+			border-bottom: 1px solid var(--border-color);
+			overflow-x: auto;
+		}
+
+		.tab {
+			padding: 0.75rem 1rem;
+			cursor: pointer;
+			border-bottom: 2px solid transparent;
+			transition: all 0.3s;
+			white-space: nowrap;
+		}
+
+		.tab.active {
+			border-bottom-color: var(--primary-color);
+			color: var(--primary-color);
+		}
+
+		.tab-content {
+			display: none;
+		}
+
+		.tab-content.active {
+			display: block;
+		}
+
+		.result-card {
+			background-color: var(--card-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 5px;
+			padding: 1.5rem;
+			width: 100%;
+			margin-bottom: 1.5rem;
+			transition: transform 0.3s, box-shadow 0.3s;
+		}
+
+		.result-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+			border-color: var(--primary-color);
+		}
+
+		.result-title {
+			font-size: 1.2rem;
+			margin-bottom: 0.5rem;
+			color: var(--primary-color);
+			word-break: break-all;
+		}
+
+		.result-meta {
+			display: flex;
+			justify-content: space-between;
+			color: var(--secondary-text);
+			font-size: 0.8rem;
+			margin-bottom: 1rem;
+		}
+
+		.result-content {
+			margin-bottom: 1rem;
+			line-height: 1.6;
+		}
+
+		.result-links {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			margin-top: 1rem;
+		}
+
+		.link-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			padding: 0.5rem 1rem;
+			background-color: var(--bg-color);
+			border: 1px solid var(--border-color);
+			border-radius: 4px;
+			color: var(--text-color);
+			text-decoration: none;
+			font-size: 0.9rem;
+			transition: all 0.3s;
+		}
+
+		.link-btn:hover {
+			background-color: var(--primary-color);
+			color: #000;
+		}
+
+		.password {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--bg-color);
+			color: var(--text-color);
+			padding: 0.2rem 0.5rem;
+			border-radius: 3px;
+			margin-left: 0.5rem;
+			font-family: monospace;
+			border: 1px dashed var(--border-color);
+		}
+
+		.tags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			margin-top: 0.5rem;
+		}
+
+		.tag {
+			font-size: 0.8rem;
+			background-color: rgba(0, 199, 199, 0.1);
+			color: var(--primary-color);
+			padding: 0.2rem 0.5rem;
+			border-radius: 3px;
+		}
+
+		footer {
+			text-align: center;
+			padding: 1.5rem;
+			background-color: var(--card-bg);
+			border-top: 1px solid var(--border-color);
+			color: var(--secondary-text);
+			font-size: 0.9rem;
+		}
+
+		.no-results {
+			text-align: center;
+			padding: 3rem;
+			color: var(--secondary-text);
+		}
+
+		@media (max-width: 768px) {
+			.search-box {
+				flex-direction: column;
+			}
+
+			.search-input {
+				border-radius: 5px;
+				margin-bottom: 0.5rem;
+			}
+
+			.search-btn {
+				border-radius: 5px;
+				padding: 0.75rem;
+			}
+
+			.result-tabs {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+				white-space: nowrap;
+				padding-bottom: 0.5rem;
+			}
+
+			.tab {
+				flex: 0 0 auto;
+				padding: 0.75rem 0.75rem;
+			}
+
+			.result-card {
+				padding: 1rem;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<header>
+		<h1>NetworkDrive Hunter</h1>
+		<p class="subtitle">// 极客专属的网盘资源搜索引擎 //</p>
+	</header>
+
+	<div class="container">
+		<div class="search-box">
+			<input type="text" id="search-input" class="search-input" placeholder="输入关键词搜索网盘资源..." autofocus>
+			<button id="search-btn" class="search-btn">搜索</button>
+		</div>
+
+		<button id="advanced-toggle" class="advanced-toggle">
+			高级选项 ▾
+		</button>
+
+		<div id="advanced-options" class="advanced-options">
+			<div class="option-group">
+				<label for="src-select">数据来源：</label>
+				<select id="src-select">
+					<option value="all">全部来源</option>
+					<option value="tg">仅 Telegram</option>
+					<option value="plugin">仅插件</option>
+				</select>
+			</div>
+
+			<div class="option-group">
+				<label for="res-select">结果类型：</label>
+				<select id="res-select">
+					<option value="merge">按网盘类型合并结果</option>
+					<option value="results">完整结果列表</option>
+					<option value="all">所有结果</option>
+				</select>
+			</div>
+
+			<div class="option-group">
+				<label for="plugins">使用插件（逗号分隔）：</label>
+				<input type="text" id="plugins" placeholder="例如: pansearch,qupansou,panta">
+			</div>
+
+			<div class="option-group">
+				<label for="channels">搜索频道（逗号分隔）：</label>
+				<input type="text" id="channels" placeholder="例如: tgsearchers2,xxx">
+			</div>
+
+			<div class="option-group">
+				<div class="checkbox-group">
+					<input type="checkbox" id="refresh">
+					<label for="refresh">强制刷新（不使用缓存）</label>
+				</div>
+			</div>
+		</div>
+
+		<div id="loading" class="loading">
+			<div class="spinner"></div>
+			<p>搜索中，请稍候...</p>
+		</div>
+
+		<div id="results">
+			<div class="result-stats" id="result-stats" style="display: none;">
+				<span>共找到 <span id="result-count">0</span> 个结果</span>
+				<span id="search-time"></span>
+			</div>
+
+			<div class="result-tabs" id="result-tabs" style="display: none;">
+				<div class="tab active" data-tab="all">全部</div>
+				<div class="tab" data-tab="baidu">百度网盘</div>
+				<div class="tab" data-tab="aliyun">阿里云盘</div>
+				<div class="tab" data-tab="quark">夸克网盘</div>
+				<div class="tab" data-tab="xunlei">迅雷云盘</div>
+				<div class="tab" data-tab="123">123云盘</div>
+				<div class="tab" data-tab="115">115网盘</div>
+				<div class="tab" data-tab="uc">UC网盘</div>
+				<div class="tab" data-tab="tianyi">天翼云盘</div>
+				<div class="tab" data-tab="mobile">移动云盘</div>
+			</div>
+
+			<div id="tab-all" class="tab-content active">
+				<div class="results-container" id="all-results"></div>
+			</div>
+
+			<div id="tab-baidu" class="tab-content">
+				<div class="results-container" id="baidu-results"></div>
+			</div>
+
+			<div id="tab-aliyun" class="tab-content">
+				<div class="results-container" id="aliyun-results"></div>
+			</div>
+
+			<div id="tab-quark" class="tab-content">
+				<div class="results-container" id="quark-results"></div>
+			</div>
+
+			<div id="tab-xunlei" class="tab-content">
+				<div class="results-container" id="xunlei-results"></div>
+			</div>
+
+			<div id="tab-123" class="tab-content">
+				<div class="results-container" id="123-results"></div>
+			</div>
+
+			<div id="tab-115" class="tab-content">
+				<div class="results-container" id="115-results"></div>
+			</div>
+
+			<div id="tab-uc" class="tab-content">
+				<div class="results-container" id="uc-results"></div>
+			</div>
+
+			<div id="tab-tianyi" class="tab-content">
+				<div class="results-container" id="tianyi-results"></div>
+			</div>
+
+			<div id="tab-mobile" class="tab-content">
+				<div class="results-container" id="mobile-results"></div>
+			</div>
+		</div>
+	</div>
+
+	<footer>
+		<p>NetworkDrive Hunter v1.0.0 | 为极客打造的资源搜索工具</p>
+		<p>API 基于 https://pansou.252035.xyz</p>
+	</footer>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			const searchInput = document.getElementById('search-input');
+			const searchBtn = document.getElementById('search-btn');
+			const advancedToggle = document.getElementById('advanced-toggle');
+			const advancedOptions = document.getElementById('advanced-options');
+			const loading = document.getElementById('loading');
+			const resultStats = document.getElementById('result-stats');
+			const resultCount = document.getElementById('result-count');
+			const searchTime = document.getElementById('search-time');
+			const resultTabs = document.getElementById('result-tabs');
+			const tabs = document.querySelectorAll('.tab');
+			const tabContents = document.querySelectorAll('.tab-content');
+
+			// 网盘类型映射
+			const driveTypes = {
+				'baidu': '百度网盘',
+				'aliyun': '阿里云盘',
+				'quark': '夸克网盘',
+				'xunlei': '迅雷云盘',
+				'123': '123云盘',
+				'115': '115网盘',
+				'uc': 'UC网盘',
+				'tianyi': '天翼云盘',
+				'mobile': '移动云盘',
+				'lanzou': '蓝奏云',
+				'123pan': '123云盘'
+			};
+
+			// 高级选项显示/隐藏
+			advancedToggle.addEventListener('click', function () {
+				if (advancedOptions.style.display === 'block') {
+					advancedOptions.style.display = 'none';
+					advancedToggle.textContent = '高级选项 ▾';
+				} else {
+					advancedOptions.style.display = 'block';
+					advancedToggle.textContent = '高级选项 ▴';
+				}
+			});
+
+			// 标签切换
+			tabs.forEach(tab => {
+				tab.addEventListener('click', function () {
+					tabs.forEach(t => t.classList.remove('active'));
+					tabContents.forEach(c => c.classList.remove('active'));
+
+					this.classList.add('active');
+					document.getElementById(`tab-${this.dataset.tab}`).classList.add('active');
+				});
+			});
+
+			// 搜索功能
+			searchBtn.addEventListener('click', performSearch);
+			searchInput.addEventListener('keypress', function (e) {
+				if (e.key === 'Enter') {
+					performSearch();
+				}
+			});
+
+			// 检查API健康状态
+			checkApiHealth();
+
+			function checkApiHealth() {
+				fetch('https://pansou.252035.xyz/api/health')
+					.then(response => response.json())
+					.then(data => {
+						if (data.status !== 'ok') {
+							console.log('API服务状态:', data);
+						}
+					})
+					.catch(error => {
+						console.error('健康检查失败:', error);
+					});
+			}
+
+			function performSearch() {
+				const keyword = searchInput.value.trim();
+				if (!keyword) {
+					alert('请输入搜索关键词');
+					return;
+				}
+
+				// 显示加载状态
+				loading.style.display = 'block';
+				resultStats.style.display = 'none';
+				resultTabs.style.display = 'none';
+
+				// 清空之前的结果
+				document.getElementById('all-results').innerHTML = '';
+				document.querySelectorAll('.results-container').forEach(container => {
+					container.innerHTML = '';
+				});
+
+				// 获取高级选项
+				const src = document.getElementById('src-select').value;
+				const resType = document.getElementById('res-select').value;
+				const plugins = document.getElementById('plugins').value;
+				const channels = document.getElementById('channels').value;
+				const refresh = document.getElementById('refresh').checked;
+
+				// 构建查询参数
+				const params = new URLSearchParams();
+				params.append('kw', keyword);
+				params.append('src', src);
+				params.append('res', resType);
+				if (plugins) params.append('plugins', plugins);
+				if (channels) params.append('channels', channels);
+				if (refresh) params.append('refresh', 'true');
+
+				const startTime = new Date();
+
+				// 发送请求
+				fetch(`https://pansou.252035.xyz/api/search?${params.toString()}`)
+					.then(response => {
+						if (!response.ok) {
+							throw new Error('搜索请求失败');
+						}
+						return response.json();
+					})
+					.then(response => {
+						const endTime = new Date();
+						const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+
+						// 适配接口返回的数据结构
+						let data;
+						if (response.code === 0 && response.data) {
+							data = response.data;
+						} else {
+							data = response;
+						}
+
+						console.log("处理的数据:", data);
+
+						// 更新统计信息
+						resultCount.textContent = data.total || 0;
+						searchTime.textContent = `耗时 ${timeTaken} 秒`;
+
+						// 处理和显示结果
+						displayResults(data);
+
+						// 隐藏加载状态，显示结果统计
+						loading.style.display = 'none';
+						resultStats.style.display = 'flex';
+						resultTabs.style.display = 'flex';
+					})
+					.catch(error => {
+						console.error('搜索错误:', error);
+						loading.style.display = 'none';
+						alert('搜索过程中发生错误，请重试。');
+					});
+			}
+
+			function displayResults(data) {
+				if (!data.total || data.total === 0) {
+					document.getElementById('all-results').innerHTML = '<div class="no-results"><p>没有找到相关结果</p></div>';
+					document.querySelectorAll('.tab-content:not(#tab-all)').forEach(tab => {
+						tab.querySelector('.results-container').innerHTML = '<div class="no-results"><p>没有找到相关结果</p></div>';
+					});
+					return;
+				}
+
+				// 处理 merged_by_type 结果
+				if (data.merged_by_type) {
+					const allResultsContainer = document.getElementById('all-results');
+					const driveResults = {};
+
+					// 初始化每种网盘的结果容器
+					Object.keys(driveTypes).forEach(type => {
+						driveResults[type] = document.getElementById(`${type}-results`);
+					});
+
+					let totalCards = 0;
+					let hasResults = {}; // 记录哪些网盘类型有结果
+
+					for (const [type, links] of Object.entries(data.merged_by_type)) {
+						hasResults[type] = links.length > 0;
+
+						links.forEach(link => {
+							const card = createMergedResultCard(type, link);
+
+							// 添加到所有结果
+							allResultsContainer.appendChild(card.cloneNode(true));
+							totalCards++;
+
+							// 添加到对应网盘的标签页
+							if (driveResults[type]) {
+								driveResults[type].appendChild(card.cloneNode(true));
+							}
+						});
+					}
+
+					console.log(`已渲染 ${totalCards} 个结果卡片`);
+
+					// 检查哪些网盘类型没有结果
+					Object.keys(driveTypes).forEach(type => {
+						if (!hasResults[type] && driveResults[type]) {
+							driveResults[type].innerHTML = `<div class="no-results"><p>没有找到${driveTypes[type]}结果</p></div>`;
+						}
+					});
+				}
+
+				// 处理 results 结果（如果有且没有 merged_by_type）
+				if (data.results && data.results.length > 0 && !data.merged_by_type) {
+					const allResultsContainer = document.getElementById('all-results');
+					data.results.forEach(result => {
+						const card = createResultCard(result);
+						allResultsContainer.appendChild(card);
+					});
+				}
+			}
+
+			function createMergedResultCard(type, link) {
+				const card = document.createElement('div');
+				card.className = 'result-card';
+
+				// 尝试格式化日期时间，处理无效日期
+				let formattedDate = "未知日期";
+				try {
+					const dateObj = new Date(link.datetime);
+					if (!isNaN(dateObj.getTime())) {
+						formattedDate =
+							`${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`;
+					}
+				} catch (e) {
+					console.error('日期格式化错误:', e);
+				}
+
+				// 获取网盘类型的友好名称
+				const typeName = driveTypes[type] || type;
+
+				card.innerHTML = `
+                    <div class="result-title">${link.note || '未命名资源'}</div>
+                    <div class="result-meta">
+                        <span>${typeName}</span>
+                        <span>${formattedDate}</span>
+                    </div>
+                    <div class="result-links">
+                        <a href="${link.url}" target="_blank" class="link-btn">打开链接</a>
+                        ${link.password ? `<span class="password">提取码: ${link.password}</span>` : ''}
+                    </div>
+                `;
+
+				return card;
+			}
+
+			function createResultCard(result) {
+				const card = document.createElement('div');
+				card.className = 'result-card';
+
+				// 尝试格式化日期时间，处理无效日期
+				let formattedDate = "未知日期";
+				try {
+					const dateObj = new Date(result.datetime);
+					if (!isNaN(dateObj.getTime())) {
+						formattedDate =
+							`${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`;
+					}
+				} catch (e) {
+					console.error('日期格式化错误:', e);
+				}
+
+				let linksHTML = '';
+				if (result.links && result.links.length > 0) {
+					result.links.forEach(link => {
+						const typeName = driveTypes[link.type] || link.type;
+
+						linksHTML += `
+                            <a href="${link.url}" target="_blank" class="link-btn">${typeName}</a>
+                            ${link.password ? `<span class="password">提取码: ${link.password}</span>` : ''}
+                        `;
+					});
+				}
+
+				let tagsHTML = '';
+				if (result.tags && result.tags.length > 0) {
+					tagsHTML = '<div class="tags">';
+					result.tags.forEach(tag => {
+						tagsHTML += `<span class="tag">${tag}</span>`;
+					});
+					tagsHTML += '</div>';
+				}
+
+				card.innerHTML = `
+                    <div class="result-title">${result.title || '未命名资源'}</div>
+                    <div class="result-meta">
+                        <span>来源: ${result.channel || '未知来源'}</span>
+                        <span>${formattedDate}</span>
+                    </div>
+                    <div class="result-content">${result.content || ''}</div>
+                    <div class="result-links">${linksHTML}</div>
+                    ${tagsHTML}
+                `;
+
+				return card;
+			}
+		});
+	</script>
+</body>
+
+</html>
