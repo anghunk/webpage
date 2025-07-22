@@ -17,3 +17,4 @@ https://webpage.zishu.me/
 
 - [旋转六边形小球模拟](https://webpage.zishu.me/rotating_hexagon_ball_sim.html)
 - [极客资源搜索工具](https://webpage.zishu.me/pansearch.html)
+- [动态天气地球](https://webpage.zishu.me/Dynamic-Weather-Earth.html)

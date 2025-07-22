@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>动态天气地球 - Three.js</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      background: #000011;
+      color: white;
+      overflow: hidden;
+    }
+
+    #container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      min-width: 300px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 5px;
+      background: #333;
+      outline: none;
+      -webkit-appearance: none;
+      border-radius: 5px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      background: #4CAF50;
+      cursor: pointer;
+      border-radius: 50%;
+    }
+
+    select {
+      width: 100%;
+      padding: 5px;
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+
+    #info {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 18px;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="loading">正在加载地球...</div>
+  <div id="container"></div>
+
+  <div id="controls">
+    <h3 style="margin-bottom: 20px; color: #4CAF50;">地球控制面板</h3>
+
+    <div class="control-group">
+      <label>旋转速度: <span id="rotationSpeedValue">1</span></label>
+      <input type="range" id="rotationSpeed" min="0" max="5" step="0.1" value="1">
+    </div>
+
+    <div class="control-group">
+      <label>云层密度: <span id="cloudDensityValue">0.5</span></label>
+      <input type="range" id="cloudDensity" min="0" max="1" step="0.1" value="0.5">
+    </div>
+
+    <div class="control-group">
+      <label>天气模式:</label>
+      <select id="weatherMode">
+        <option value="sunny">晴天</option>
+        <option value="cloudy">多云</option>
+        <option value="rainy">雨天</option>
+        <option value="snowy">雪天</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>光照强度: <span id="lightIntensityValue">1</span></label>
+      <input type="range" id="lightIntensity" min="0" max="2" step="0.1" value="1">
+    </div>
+
+    <div class="control-group">
+      <label>大气层透明度: <span id="atmosphereOpacityValue">0.3</span></label>
+      <input type="range" id="atmosphereOpacity" min="0" max="1" step="0.1" value="0.3">
+    </div>
+
+    <div class="control-group">
+      <label>
+        <input type="checkbox" id="autoRotate" checked> 自动旋转
+      </label>
+    </div>
+
+    <div class="control-group">
+      <label>
+        <input type="checkbox" id="showAxes"> 显示坐标轴
+      </label>
+    </div>
+  </div>
+
+  <div id="info">
+    使用鼠标拖拽旋转地球 | 滚轮缩放视角
+  </div>
+
+  <!-- 引入Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    let scene, camera, renderer, earth, clouds, atmosphere;
+    let controls;
+    let ambientLight, directionalLight;
+    let weatherParticles = [];
+
+    // 初始化场景
+    function init() {
+      // 创建场景
+      scene = new THREE.Scene();
+
+      // 创建相机
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.z = 3;
+
+      // 创建渲染器
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      document.getElementById('container').appendChild(renderer.domElement);
+
+      // 添加轨道控制器
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.rotateSpeed = 0.5;
+
+      // 创建光照
+      ambientLight = new THREE.AmbientLight(0x404040);
+      scene.add(ambientLight);
+
+      directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 3, 5);
+      scene.add(directionalLight);
+
+      // 创建地球
+      createEarth();
+
+      // 创建云层
+      createClouds();
+
+      // 创建大气层
+      createAtmosphere();
+
+      // 创建星空背景
+      createStarfield();
+
+      // 隐藏加载提示
+      document.getElementById('loading').style.display = 'none';
+
+      // 绑定控件事件
+      bindControls();
+
+      // 开始动画循环
+      animate();
+    }
+
+    // 创建地球
+    function createEarth() {
+      const geometry = new THREE.SphereGeometry(1, 64, 64);
+
+      // 使用纹理（由于无法加载外部图片，使用程序化纹理）
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // 创建海洋纹理
+      ctx.fillStyle = '#1e3a5f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 添加大陆
+      ctx.fillStyle = '#2d5016';
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 100 + 20;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.MeshPhongMaterial({ map: texture });
+
+      earth = new THREE.Mesh(geometry, material);
+      scene.add(earth);
+    }
+
+    // 创建云层
+    function createClouds() {
+      const geometry = new THREE.SphereGeometry(1.01, 32, 32);
+
+      // 创建云层纹理
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 50 + 10;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.MeshPhongMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.5,
+        depthWrite: false
+      });
+
+      clouds = new THREE.Mesh(geometry, material);
+      scene.add(clouds);
+    }
+
+    // 创建大气层
+    function createAtmosphere() {
+      const geometry = new THREE.SphereGeometry(1.05, 64, 64);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x6bb6ff,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.BackSide
+      });
+
+      atmosphere = new THREE.Mesh(geometry, material);
+      scene.add(atmosphere);
+    }
+
+    // 创建星空背景
+    function createStarfield() {
+      const starsGeometry = new THREE.BufferGeometry();
+      const starsMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.01,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      const starsVertices = [];
+      for (let i = 0; i < 10000; i++) {
+        const x = (Math.random() - 0.5) * 100;
+        const y = (Math.random() - 0.5) * 100;
+        const z = (Math.random() - 0.5) * 100;
+        starsVertices.push(x, y, z);
+      }
+
+      starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+      const starField = new THREE.Points(starsGeometry, starsMaterial);
+      scene.add(starField);
+    }
+
+    // 创建天气粒子
+    function createWeatherParticles(weather) {
+      // 清除现有粒子
+      weatherParticles.forEach(particle => scene.remove(particle));
+      weatherParticles = [];
+
+      if (weather === 'rainy' || weather === 'snowy') {
+        const particleCount = 1000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+
+        for (let i = 0; i < particleCount; i++) {
+          positions.push(
+            (Math.random() - 0.5) * 4,
+            Math.random() * 2 + 1,
+            (Math.random() - 0.5) * 4
+          );
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+        let material;
+        if (weather === 'rainy') {
+          material = new THREE.PointsMaterial({
+            color: 0x4444ff,
+            size: 0.01,
+            transparent: true,
+            opacity: 0.6
+          });
+        } else {
+          material = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.02,
+            transparent: true,
+            opacity: 0.8
+          });
+        }
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+        weatherParticles.push(particles);
+      }
+    }
+
+    // 绑定控件事件
+    function bindControls() {
+      // 旋转速度
+      document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+        document.getElementById('rotationSpeedValue').textContent = e.target.value;
+      });
+
+      // 云层密度
+      document.getElementById('cloudDensity').addEventListener('input', (e) => {
+        document.getElementById('cloudDensityValue').textContent = e.target.value;
+        clouds.material.opacity = e.target.value;
+      });
+
+      // 天气模式
+      document.getElementById('weatherMode').addEventListener('change', (e) => {
+        createWeatherParticles(e.target.value);
+      });
+
+      // 光照强度
+      document.getElementById('lightIntensity').addEventListener('input', (e) => {
+        document.getElementById('lightIntensityValue').textContent = e.target.value;
+        directionalLight.intensity = parseFloat(e.target.value);
+      });
+
+      // 大气层透明度
+      document.getElementById('atmosphereOpacity').addEventListener('input', (e) => {
+        document.getElementById('atmosphereOpacityValue').textContent = e.target.value;
+        atmosphere.material.opacity = parseFloat(e.target.value);
+      });
+
+      // 自动旋转
+      document.getElementById('autoRotate').addEventListener('change', (e) => {
+        controls.autoRotate = e.target.checked;
+      });
+
+      // 显示坐标轴
+      document.getElementById('showAxes').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          const axes = new THREE.AxesHelper(2);
+          axes.name = 'axesHelper';
+          scene.add(axes);
+        } else {
+          const axes = scene.getObjectByName('axesHelper');
+          if (axes) scene.remove(axes);
+        }
+      });
+
+      // 初始化天气
+      createWeatherParticles('sunny');
+    }
+
+    // 动画循环
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 地球自转
+      if (controls.autoRotate) {
+        const rotationSpeed = parseFloat(document.getElementById('rotationSpeed').value) * 0.002;
+        earth.rotation.y += rotationSpeed;
+        clouds.rotation.y += rotationSpeed * 1.1;
+        atmosphere.rotation.y += rotationSpeed;
+      }
+
+      // 粒子动画
+      weatherParticles.forEach(particle => {
+        const positions = particle.geometry.attributes.position.array;
+        for (let i = 1; i < positions.length; i += 3) {
+          positions[i] -= 0.01;
+          if (positions[i] < -1) {
+            positions[i] = 3;
+          }
+        }
+        particle.geometry.attributes.position.needsUpdate = true;
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // 窗口大小调整
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 初始化
+    init();
+  </script>
+</body>
+
+</html>
