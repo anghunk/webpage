@@ -477,7 +477,7 @@
 
 	<footer>
 		<p>NetworkDrive Hunter v1.0.0 | 为极客打造的资源搜索工具</p>
-		<p>API 基于 https://pansou.252035.xyz</p>
+		<p>API 基于 https://so.252035.xyz</p>
 	</footer>
 
 	<script>
@@ -543,7 +543,7 @@
 			checkApiHealth();
 
 			function checkApiHealth() {
-				fetch('https://pansou.252035.xyz/api/health')
+				fetch('https://so.252035.xyz/api/health')
 					.then(response => response.json())
 					.then(data => {
 						if (data.status !== 'ok') {
@@ -592,7 +592,7 @@
 				const startTime = new Date();
 
 				// 发送请求
-				fetch(`https://pansou.252035.xyz/api/search?${params.toString()}`)
+				fetch(`https://so.252035.xyz/api/search?${params.toString()}`)
 					.then(response => {
 						if (!response.ok) {
 							throw new Error('搜索请求失败');
