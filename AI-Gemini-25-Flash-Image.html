@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI图片编辑器 - Gemini 2.5 Flash Image</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .upload-section, .preview-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .image-preview {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .prompt-section {
+            grid-column: 1 / -1;
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .prompt-input {
+            width: 100%;
+            min-height: 120px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1rem;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+            grid-column: 1 / -1;
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            margin-top: 20px;
+        }
+
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .image-item {
+            text-align: center;
+        }
+
+        .image-item h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #363;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .image-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .control-buttons {
+                justify-content: center;
+            }
+        }
+
+        .api-config-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI图片编辑器</h1>
+            <p>基于 Gemini 2.5 Flash Image 的智能图片修改工具</p>
+        </div>
+
+        <div class="api-config-section">
+            <h3>API配置</h3>
+            <p>API端点URL：</p>
+            <input type="text" class="config-input" id="apiEndpoint" placeholder="输入您的API端点URL">
+            <p style="margin-top: 10px;">API Key：</p>
+            <input type="password" class="config-input" id="apiKey" placeholder="输入您的API Key">
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                使用OpenAI兼容的API格式调用Gemini 2.5 Flash Image模型
+            </p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">上传图片</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">��️</div>
+                    <div class="upload-text">拖拽图片到此处或点击选择</div>
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">
+                        选择图片
+                    </button>
+                </div>
+                <input type="file" class="file-input" id="fileInput" accept="image/*">
+            </div>
+
+            <div class="preview-section">
+                <h2 class="section-title">原图预览</h2>
+                <div id="previewContainer">
+                    <p style="text-align: center; color: #999; padding: 40px;">
+                        请先上传图片
+                    </p>
+                </div>
+            </div>
+
+            <div class="prompt-section">
+                <h2 class="section-title">修改指令</h2>
+                <textarea 
+                    class="prompt-input" 
+                    id="promptInput" 
+                    placeholder="描述您想要的修改效果，例如：
+- 将背景改成蓝天白云
+- 给这个人添加一顶帽子  
+- 把这只猫的颜色改成橙色
+- 在图片右上角添加一个太阳
+- 将这张照片的风格改为油画风格"
+                ></textarea>
+                
+                <div class="control-buttons">
+                    <button class="btn" id="generateBtn" onclick="generateImage()" disabled>
+                        生成修改后的图片
+                    </button>
+                    <button class="btn" id="downloadBtn" onclick="downloadImage()" disabled>
+                        下载结果
+                    </button>
+                    <button class="btn" onclick="clearAll()">
+                        重置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loadingDiv">
+            <div class="spinner"></div>
+            <p>AI正在处理您的图片，请稍候...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <h2 class="section-title">处理结果</h2>
+            <div class="image-comparison">
+                <div class="image-item">
+                    <h3>原图</h3>
+                    <img id="originalImage" class="image-preview" alt="原图">
+                </div>
+                <div class="image-item">
+                    <h3>修改后</h3>
+                    <img id="resultImage" class="image-preview" alt="修改后的图片">
+                </div>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+    </div>
+
+    <script>
+        let uploadedImage = null;
+        let resultImageData = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const apiEndpoint = document.getElementById('apiEndpoint');
+            const apiKey = document.getElementById('apiKey');
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                }
+            });
+
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            apiEndpoint.addEventListener('input', checkGenerateButton);
+            apiKey.addEventListener('input', checkGenerateButton);
+        }
+
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('请选择图片文件');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImage = e.target.result;
+                showImagePreview(uploadedImage);
+                checkGenerateButton();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(imageSrc) {
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.innerHTML = `
+                <img src="${imageSrc}" class="image-preview" alt="预览图片">
+                <p style="text-align: center; margin-top: 15px; color: #666;">
+                    图片上传成功 ✓
+                </p>
+            `;
+        }
+
+        function checkGenerateButton() {
+            const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const prompt = document.getElementById('promptInput').value.trim();
+            const generateBtn = document.getElementById('generateBtn');
+            
+            generateBtn.disabled = !uploadedImage || !apiEndpoint || !apiKey || !prompt;
+        }
+
+        document.getElementById('promptInput').addEventListener('input', checkGenerateButton);
+
+        async function generateImage() {
+            const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const prompt = document.getElementById('promptInput').value.trim();
+
+            if (!uploadedImage || !apiEndpoint || !apiKey || !prompt) {
+                showError('请确保已配置API、上传图片并输入修改指令');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            try {
+                const base64Data = uploadedImage.split(',')[1];
+                
+                const requestBody = {
+                    model: "gemini-2.5-flash-image-preview",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Please edit this image according to the following instructions: ${prompt}. Return the modified image as base64 data.`
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: uploadedImage
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 4096,
+                    temperature: 0.3
+                };
+
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
+                }
+
+                const result = await response.json();
+                
+                // 处理OpenAI格式的响应
+                if (result.choices && result.choices[0] && result.choices[0].message) {
+                    const messageContent = result.choices[0].message.content;
+                    
+                    // 查找base64图像数据
+                    const base64Match = messageContent.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
+                    if (base64Match) {
+                        const generatedImageData = base64Match[0];
+                        resultImageData = generatedImageData;
+                        displayResult(generatedImageData);
+                        showSuccess('图片修改完成！');
+                        document.getElementById('downloadBtn').disabled = false;
+                    } else {
+                        // 如果是纯base64数据
+                        const base64OnlyMatch = messageContent.match(/^[A-Za-z0-9+/=]+$/);
+                        if (base64OnlyMatch) {
+                            const generatedImageData = `data:image/png;base64,${messageContent}`;
+                            resultImageData = generatedImageData;
+                            displayResult(generatedImageData);
+                            showSuccess('图片修改完成！');
+                            document.getElementById('downloadBtn').disabled = false;
+                        } else {
+                            throw new Error('API返回了文本响应而非图片数据：' + messageContent);
+                        }
+                    }
+                } else {
+                    throw new Error('未收到有效的API响应');
+                }
+                
+            } catch (error) {
+                console.error('生成图片失败:', error);
+                showError('生成失败：' + error.message);
+            }
+
+            showLoading(false);
+        }
+
+        function displayResult(imageData) {
+            const resultSection = document.getElementById('resultSection');
+            const originalImage = document.getElementById('originalImage');
+            const resultImage = document.getElementById('resultImage');
+            
+            originalImage.src = uploadedImage;
+            resultImage.src = imageData;
+            
+            resultSection.style.display = 'block';
+        }
+
+        async function downloadImage() {
+            if (!resultImageData) {
+                showError('没有可下载的图片');
+                return;
+            }
+
+            try {
+                const link = document.createElement('a');
+                link.download = 'ai_edited_image.png';
+                link.href = resultImageData;
+                link.click();
+            } catch (error) {
+                showError('下载失败：' + error.message);
+            }
+        }
+
+        function clearAll() {
+            uploadedImage = null;
+            resultImageData = null;
+            
+            document.getElementById('fileInput').value = '';
+            document.getElementById('promptInput').value = '';
+            document.getElementById('previewContainer').innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">请先上传图片</p>';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('downloadBtn').disabled = true;
+            
+            checkGenerateButton();
+            hideMessages();
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingDiv').style.display = show ? 'block' : 'none';
+            document.getElementById('generateBtn').disabled = show;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
